@@ -13,7 +13,6 @@
 
 #include "Common.h"
 #include "Timer.h"
-#include <ace/Singleton.h>
 #include <ace/Atomic_Op.h>
 #include "SharedDefines.h"
 #include "QueryResult.h"
@@ -169,6 +168,11 @@ enum WorldBoolConfigs
     CONFIG_CHECK_GOBJECT_LOS,
     CONFIG_CLOSE_IDLE_CONNECTIONS,
     CONFIG_LFG_LOCATION_ALL, // Player can join LFG anywhere
+    CONFIG_PRELOAD_ALL_NON_INSTANCED_MAP_GRIDS,
+    CONFIG_ALLOW_TWO_SIDE_INTERACTION_EMOTE,
+    CONFIG_ITEMDELETE_METHOD,
+    CONFIG_ITEMDELETE_VENDOR,
+    CONFIG_SET_ALL_CREATURES_WITH_WAYPOINT_MOVEMENT_ACTIVE,
     BOOL_CONFIG_VALUE_COUNT
 };
 
@@ -312,6 +316,7 @@ enum WorldIntConfigs
     CONFIG_GUILD_BANK_EVENT_LOG_COUNT,
     CONFIG_MIN_LEVEL_STAT_SAVE,
     CONFIG_RANDOM_BG_RESET_HOUR,
+    CONFIG_CALENDAR_DELETE_OLD_EVENTS_HOUR,
     CONFIG_GUILD_RESET_HOUR,
     CONFIG_CHARDELETE_KEEP_DAYS,
     CONFIG_CHARDELETE_METHOD,
@@ -330,6 +335,9 @@ enum WorldIntConfigs
     CONFIG_WINTERGRASP_BATTLETIME,
     CONFIG_WINTERGRASP_NOBATTLETIME,
     CONFIG_WINTERGRASP_RESTART_AFTER_CRASH,
+    CONFIG_PACKET_SPOOF_POLICY,
+    CONFIG_PACKET_SPOOF_BANMODE,
+    CONFIG_PACKET_SPOOF_BANDURATION,
     CONFIG_WARDEN_CLIENT_RESPONSE_DELAY,
     CONFIG_WARDEN_CLIENT_CHECK_HOLDOFF,
     CONFIG_WARDEN_CLIENT_FAIL_ACTION,
@@ -340,6 +348,11 @@ enum WorldIntConfigs
     CONFIG_SOCKET_TIMEOUTTIME_ACTIVE,
     CONFIG_INSTANT_TAXI,
     CONFIG_AFK_PREVENT_LOGOUT,
+    CONFIG_ICC_BUFF_HORDE,
+    CONFIG_ICC_BUFF_ALLIANCE,
+    CONFIG_ITEMDELETE_QUALITY,
+    CONFIG_ITEMDELETE_ITEM_LEVEL,
+    CONFIG_WAYPOINT_MOVEMENT_STOP_TIME_FOR_PLAYER,
     INT_CONFIG_VALUE_COUNT
 };
 
@@ -482,13 +495,14 @@ enum RealmZone
 
 enum WorldStates
 {
-    WS_ARENA_DISTRIBUTION_TIME  = 20001,                     // Next arena distribution time
-    WS_WEEKLY_QUEST_RESET_TIME  = 20002,                     // Next weekly reset time
-    WS_BG_DAILY_RESET_TIME      = 20003,                     // Next daily BG reset time
-    WS_CLEANING_FLAGS           = 20004,                     // Cleaning Flags
-    WS_DAILY_QUEST_RESET_TIME   = 20005,                     // Next daily reset time
-    WS_GUILD_DAILY_RESET_TIME   = 20006,                     // Next guild cap reset time
-    WS_MONTHLY_QUEST_RESET_TIME = 20007,                     // Next monthly reset time
+    WS_ARENA_DISTRIBUTION_TIME                 = 20001,                     // Next arena distribution time
+    WS_WEEKLY_QUEST_RESET_TIME                 = 20002,                     // Next weekly reset time
+    WS_BG_DAILY_RESET_TIME                     = 20003,                     // Next daily BG reset time
+    WS_CLEANING_FLAGS                          = 20004,                     // Cleaning Flags
+    WS_DAILY_QUEST_RESET_TIME                  = 20005,                     // Next daily reset time
+    WS_GUILD_DAILY_RESET_TIME                  = 20006,                     // Next guild cap reset time
+    WS_MONTHLY_QUEST_RESET_TIME                = 20007,                     // Next monthly reset time
+    WS_DAILY_CALENDAR_DELETION_OLD_EVENTS_TIME = 20008                      // Next daily calendar deletions of old events time
 };
 
 /// Storage class for commands issued for delayed execution
@@ -555,10 +569,12 @@ struct PetitionData
 class World
 {
     public:
-        static uint32 m_worldLoopCounter;
-
         World();
         ~World();
+
+        static World* instance();
+
+        static uint32 m_worldLoopCounter;
 
         WorldSession* FindSession(uint32 id) const;
         WorldSession* FindOfflineSession(uint32 id) const;
@@ -799,11 +815,13 @@ class World
         void InitWeeklyQuestResetTime();
         void InitMonthlyQuestResetTime();
         void InitRandomBGResetTime();
+        void InitCalendarOldEventsDeletionTime();
         void InitGuildResetTime();
         void ResetDailyQuests();
         void ResetWeeklyQuests();
         void ResetMonthlyQuests();
         void ResetRandomBG();
+        void CalendarDeleteOldEvents();
         void ResetGuildCap();
     private:
         static ACE_Atomic_Op<ACE_Thread_Mutex, bool> m_stopEvent;
@@ -866,6 +884,7 @@ class World
         time_t m_NextWeeklyQuestReset;
         time_t m_NextMonthlyQuestReset;
         time_t m_NextRandomBGReset;
+        time_t m_NextCalendarOldEventsDeletionTime;
         time_t m_NextGuildReset;
 
         //Player Queue
@@ -889,7 +908,7 @@ class World
 
         std::string m_configFileList;
 };
-
-#define sWorld ACE_Singleton<World, ACE_Null_Mutex>::instance()
+ 
+#define sWorld World::instance()
 #endif
 /// @}
